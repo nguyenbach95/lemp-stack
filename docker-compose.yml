@@ -1,0 +1,85 @@
+version: '3.5'
+services:
+    php73:
+        image: 'magento/magento-cloud-docker-php:7.3-fpm'
+        container_name: php73
+        volumes:
+            - "./config/php/conf.d:/usr/local/etc/php/conf.d/"
+            - "/var/www/:/var/www/"
+
+    nginx:
+        image: nginx:latest
+        container_name: nginx
+        dns: 8.8.8.8
+        ports:
+            - mode: host
+              protocol: tcp
+              target: 80
+              published: 80
+            - mode: host
+              protocol: tcp
+              target: 443
+              published: 443
+        volumes:
+            - "./config/nginx/sites-enabled:/etc/nginx/sites-enabled"
+            - "./config/nginx/conf.d:/etc/nginx/conf.d"
+            - "/var/log/nginx/:/var/log/nginx/"
+            - "/var/www/:/var/www/"
+
+
+    mysql:
+        image: mysql:5.7
+        container_name: mysql
+        command: --default-authentication-plugin=mysql_native_password
+        restart: 'on-failure'
+        cap_add:
+            - SYS_NICE
+        environment:
+            MYSQL_ALLOW_EMPTY_PASSWORD: "false"
+            MYSQL_ROOT_PASSWORD: "root"
+        volumes:
+            - "~/docker/var/lib/mysql:/var/lib/mysql"
+            - "./config/mysql/custom.cnf:/etc/mysql/conf.d/mysql.cnf"
+            - "~/docker/var/log/mysql/query.log:/var/log/query.log"
+        ports:
+            - mode: host
+              target: 3306
+              protocol: tcp
+              published: 3306
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: phpmyadmin
+        restart: always
+        ports:
+            - '8080:80'
+        environment:
+            PMA_HOST: mysql
+
+    redis:
+        image: redis
+        hostname: redis
+        restart: 'on-failure'
+
+    elasticsearch:
+        image: elasticsearch:7.6.1
+        environment:
+            - discovery.type=single-node
+        ports:
+            - mode: host
+              target: 9200
+              protocol: tcp
+              published: 9200
+
+    mailhog:
+        image: mailhog/mailhog
+        hostname: mailhog
+        restart: 'on-failure'
+        entrypoint: MailHog -auth-file=/data/mailhog/auth.file
+        volumes:
+            - ./config/mailhog/auth.file:/data/mailhog/auth.file #https://www.browserling.com/tools/bcrypt
+        ports:
+            - mode: host
+              protocol: tcp
+              target: 8025
+              published: 1026
